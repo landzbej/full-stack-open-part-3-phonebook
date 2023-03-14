@@ -112,9 +112,13 @@ app.get('/api/persons', (request, response) => {
 //above
 
 app.get('/info', (request, response) => {
-  let peopleLength = persons.length;
-  console.log('length', peopleLength);
+  // let peopleLength = persons.length;
+  // console.log('length', peopleLength);
+  Note.find({}).then(notes => {
+    let peopleLength = (notes).length;
+ 
   response.send(`<p>There are ${peopleLength} people in phonebook</p><p>${new Date()}</p>` );
+})
 })
 
 // app.get('/api/persons/:id', (request, response) => {
@@ -177,7 +181,7 @@ const generateId = () => {
   return personId;
 }
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const body = request.body;
 
   if (!body.name || !body.number) {
@@ -187,10 +191,17 @@ app.post('/api/persons', (request, response) => {
   }
 
   if (persons.find(person => person.name.toLowerCase() === body.name.toLowerCase())){
+
+    // console.log('TEST', persons.find(person => person.name.toLowerCase() === body.name.toLowerCase())[0])
+    // if(persons.find(person => person.name.toLowerCase() === body.name.toLowerCase())[0]) {
+    //   console.log('MADE IT');
+    // } else {
+
     return response.status(400).json({
       error: 'person exists already in database'
     })
   }
+  // }
 
   // const person = {
   const person = new Note({
@@ -206,9 +217,31 @@ app.post('/api/persons', (request, response) => {
   person.save().then(savedNote => {
     response.json(savedNote)
   })
+  .catch(error => next(error))
 
 })
 
+//ADDED 830
+
+app.put('/api/persons/:id', (request, response, next) => {
+  const { name, number } = request.body;
+  
+  // const body = request.body
+
+  // const note = {
+  //   name: body.name,
+  //   number: body.number,
+  // }
+
+  //UPDATED BELOW
+  Note.findByIdAndUpdate(request.params.id, {name, number}, { new: true, runValidators: true, context: 'query' })
+    .then(updatedNote => {
+      response.json(updatedNote)
+    })
+    .catch(error => next(error))
+})
+
+//ABOVE
 
 
 
@@ -218,6 +251,8 @@ const errorHandler = (error, request, response, next) => {
 
   if (error.name === 'CastError') {
     return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {
+    return response.status(400).json({ error: error.message })
   } 
 
   next(error)
