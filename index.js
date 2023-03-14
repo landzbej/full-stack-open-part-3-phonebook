@@ -1,6 +1,60 @@
+require('dotenv').config()
+
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const Note = require('./models/note');
+
+//added
+
+// const mongoose = require('mongoose')
+
+
+// // const password = 'hey88jude'
+
+// const url = process.env.MONGODB_URI
+
+// console.log('connecting to', url);
+
+// mongoose.set('strictQuery',false);
+// mongoose.connect(url)
+// .then(result => {
+//   console.log('connected to MongoDB')
+// })
+// .catch((error) => {
+//   console.log('error connecting to MongoDB:', error.message)
+// })
+
+// const noteSchema = new mongoose.Schema({
+//   name: String,
+//   number: Number,
+// })
+
+// noteSchema.set('toJSON', {
+//   transform: (document, returnedObject) => {
+//     returnedObject.id = returnedObject._id.toString()
+//     delete returnedObject._id
+//     delete returnedObject.__v
+//   }
+// })
+
+// const Note = mongoose.model('Note', noteSchema);
+
+//above
+
+// mongoose.connect(url).then(
+  
+//   Note.find({}).then(result => {
+//   result.forEach(note => {
+//     console.log(note.name, note.number)
+//   })
+//   mongoose.connection.close()
+// })
+
+// )
+
+
+
 const app = express();
 
 
@@ -40,12 +94,22 @@ morgan.token('toke', function (req, res) { return JSON.stringify(req.body) })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :toke'));
 
 app.get('/', (request, response) => {
-  response.send('<h1>Hello World!</h1>')
+  response.send('<h1>Hello There!</h1>')
 })
 
+// app.get('/api/persons', (request, response) => {
+//   response.json(persons)
+// })
+
+//added
+
 app.get('/api/persons', (request, response) => {
-  response.json(persons)
+  Note.find({}).then(notes => {
+    response.json(notes)
+  })
 })
+
+//above
 
 app.get('/info', (request, response) => {
   let peopleLength = persons.length;
@@ -53,22 +117,60 @@ app.get('/info', (request, response) => {
   response.send(`<p>There are ${peopleLength} people in phonebook</p><p>${new Date()}</p>` );
 })
 
+// app.get('/api/persons/:id', (request, response) => {
+//   const id = Number(request.params.id);
+//   const person = persons.find(person => person.id === id)
+//   if (person) {
+//   response.json(person);
+//   } else {
+//     response.status(404).end();
+//   }
+// })
+
 app.get('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
-  const person = persons.find(person => person.id === id)
-  if (person) {
-  response.json(person);
-  } else {
-    response.status(404).end();
-  }
+  Note.findById(request.params.id)
+    .then(note => {
+      if (note) {
+        response.json(note)
+      } else {
+        response.status(404).end()
+      }
+    })
+    .catch(error => next(error))
+      // console.log(error)
+      // // response.status(500).end()
+      // response.status(400).send({ error: 'malformatted id' })
+
+      
+    // )
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter(person => person.id !== id);
 
-  response.status(204).end();
+// app.delete('/api/persons/:id', (request, response) => {
+//   const id = Number(request.params.id);
+//   persons = persons.filter(person => person.id !== id);
+
+//   response.status(204).end();
+// })
+
+app.delete('/api/persons/:id', (request, response, next) => {
+  Note.findByIdAndRemove(request.params.id)
+    .then(result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
 })
+
+// app.delete('/api/persons/:id', (request, response, next) => {
+//   Note.findByIdAndRemove(request.params.id)
+//     .then(result => {
+//       response.status(204).end()
+//     })
+//     .catch(error => next(error))
+// })
+
+
+
 
 const generateId = () => {
   const personId = Math.ceil(Math.random() *1000000);
@@ -90,17 +192,45 @@ app.post('/api/persons', (request, response) => {
     })
   }
 
-  const person = {
+  // const person = {
+  const person = new Note({
     name: body.name,
     number: body.number,
     id: generateId(),
-  }
-  persons = persons.concat(person);
-  // console.log(person)
-  response.json(person)
+  })
+  // }
+
+  // persons = persons.concat(person);
+  // response.json(person)
+
+  person.save().then(savedNote => {
+    response.json(savedNote)
+  })
+
 })
 
-const PORT = process.env.PORT || 3001
+
+
+
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } 
+
+  next(error)
+}
+
+// this has to be the last loaded middleware.
+app.use(errorHandler)
+
+
+
+
+// const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT;
 app.listen(PORT, (() => {
   console.log(`Server running on port ${PORT}`)
 }))
