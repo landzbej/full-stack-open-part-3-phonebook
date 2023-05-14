@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 mongoose.set("strictQuery",false);
 
-const url = process.env.MONGODB_URI;
+const url = `mongodb+srv://landzbej:hey88jude@cluster0.maiyaa4.mongodb.net/noteApp?retryWrites=true&w=majority`;
 
 console.log("connecting to", url);
 
